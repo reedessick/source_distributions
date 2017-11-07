@@ -1,0 +1,69 @@
+#!/usr/bin/env python
+
+__usage__ = "simulate [--options]"
+__description__ = "run the toy model simulation to generate data"
+__author__ = "Reed Essick (reed.essick@ligo.org)"
+
+#-------------------------------------------------
+
+import sys
+import gzip
+import models
+
+from optparse import OptionParser
+
+#-------------------------------------------------
+
+parser = OptionParser(usage=__usage__, description=__description__)
+
+parser.add_option('-v', '--verbose', default=False, action='store_true')
+
+parser.add_option('-n', '--num-epoch', default=100, type='int',
+    help='number of epochs during which we simulate data. \
+DEFAULT=100')
+
+parser.add_option('', '--Rdt', default=models.__Rdt, type='float',
+    help='the rate parameter determining how likely it is for there to be a signal \
+present in any individual epoch. \
+DEFAULT=%e'%models.__Rdt)
+
+parser.add_option('', '--alpha', default=models.__alpha, type='float',
+    help='index used in the truncated Pareto distribution for the latent variable \
+in the signal data distribution \
+DEFAULT=%f'%models.__alpha)
+parser.add_option('', '--beta', default=models.__beta, type='float',
+    help='scale used in the truncated Pareto distribution for the latent variable \
+in the signal data distribution \
+DEFAULT=%f'%models.__beta)
+
+parser.add_option('-o', '--output-dir', default='.', type='string')
+parser.add_option('-t', '--tag', default='', type='string')
+
+opts, args = parser.parse_args()
+
+if opts.tag:
+    opts.tag = "_"+opts.tag
+
+#-------------------------------------------------
+
+### simulate data
+path = "%s/simulate%s.txt.gz"%(opts.output_dir, opts.tag)
+if opts.verbose:
+    print( "writing : %s"%path )
+
+if opts.verbose:
+    print( "simulating %d epochs"%opts.num_epoch )
+temp = '\r    %d / '+'%d'%opts.num_epoch
+for _ in xrange(opts.num_epoch):
+    if opts.verbose:
+        sys.stdout.write(tmp%(_+1))
+
+    if models.draw_signalPresence(Nsamp=1, Rdt=opts.Rdt)[0]: ### there is a signal in this time step
+        print >> file_obj, '%.9f'%models.draw_signalData(Nsamp=1, alpha=opts.alpha, beta=opts.beta), True
+    else: 
+        print >> file_obj, '%.9f'%models.draw_noiseData(Nsamp=1, alpha=opts.alpha, beta=opts.beta), False
+
+if opts.verbose:
+    sys.stdout.write('\n')
+
+file_obj.close()

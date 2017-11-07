@@ -1,0 +1,72 @@
+#!/usr/bin/env python
+
+#-------------------------------------------------
+
+import gzip
+import regressions
+
+from optparse import OptionParser
+
+__usage__ = "regress [--options] method data"
+__description__ = "regress parameters out of the toy model. \
+The regression method can be specified on the command line and should be one of : %s"%(', '.join(regressions.__known_methods))
+__author__ = "Reed Essick (reed.essick@ligo.org)"
+
+#-------------------------------------------------
+
+parser = OptionParser(usage=__usage__, description=__description__)
+
+parser.add_option('-v', '--verbose', default=False, action='store_true')
+
+parser.add_option('-e', '--engine', default=regressions.__default_engine, type='string',
+    help='the engine used to perform the regression. Must be one of : %s. \
+DEFAULT=%s'%(', '.join(regressions.__known_engines), regressions.__default_engine))
+
+parser.add_option('', '--Rdt', default=None, type='float',
+    help='pin the rate parameter to this value. \
+If not supplied, will attempt to regress it with prior bounds specified by --min-Rdt, --max-Rdt')
+parser.add_option('', '--min-Rdt', default=1e-8, type='float',
+    help='DEFAULT=1e-8')
+parser.add_option('', '--max-Rdt', default=1e-3, type='float',
+    help='DEFAULT=1e-3')
+
+parser.add_option('', '--alpha', default=None, type='float',
+    help='pin the index to this value. \
+If not supplied, will attempt to regress it with prior bound specified by --min-alpha, --max-alpha')
+parser.add_option('', '--min-alpha', default=1, type='float',
+    help='DEFAULT=1')
+parser.add_option('', '--max-alpha', default=3, type='float',
+    help='DEFAULT=3')
+
+parser.add_option('', '--beta', default=None, type='float',
+    help='pin the scale parameter to this value. \
+If not supplied, will attempt to regress it with prior bounds specified by --min-beta, --max-beta')
+parser.add_option('', '--min-beta', default=1e-5, type='float',
+    help='DEFAULT=1e-5')
+parser.add_option('', '--max-beta', default=1e-3, type='float',
+    help='DEFAULT=1e-3')
+
+parser.add_option('-o', '--output-dir', default='.', type='string')
+parser.add_option('-t', '--tag', default='', type='string')
+
+opts, args = parser.parse_args()
+assert len(args)==2, 'please supply exactly 2 input argument\n%s'%__usage__
+method, path = args
+assert method in regression.__known_methods, 'method must be one of : %s'%(', '.join(regressions.__known_methods))
+
+if opts.tag:
+    opts.tag = "_"+opts.tag
+
+#-------------------------------------------------
+
+if opts.verbose:
+    print( 'reading data from : %s'%path )
+data = np.loadtxt(path)
+num_epoch = len(data)
+
+#------------------------
+
+raise NotImplementedError, """\
+define likelihoods, priors and set up regression engines (regressions.py)
+need to define output data format, etc
+"""
