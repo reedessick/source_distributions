@@ -69,4 +69,7 @@ num_epoch = len(data)
 raise NotImplementedError, """\
 define likelihoods, priors and set up regression engines (regressions.py)
 need to define output data format, etc
+
+also need to define models that have non-uniform distributions over time
+    -> check whether non-observations are informative in the likelihood
 """
