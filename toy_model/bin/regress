@@ -2,7 +2,9 @@
 
 #-------------------------------------------------
 
-import gzip
+import numpy as np
+
+import models
 import regressions
 
 from optparse import OptionParser
@@ -17,34 +19,57 @@ __author__ = "Reed Essick (reed.essick@ligo.org)"
 parser = OptionParser(usage=__usage__, description=__description__)
 
 parser.add_option('-v', '--verbose', default=False, action='store_true')
+parser.add_option('-V', '--Verbose', default=False, action='store_true')
 
+#--- sampler engine
 parser.add_option('-e', '--engine', default=regressions.__default_engine, type='string',
     help='the engine used to perform the regression. Must be one of : %s. \
 DEFAULT=%s'%(', '.join(regressions.__known_engines), regressions.__default_engine))
+parser.add_option('', '--num-steps', default=regressions.__num_steps, type='int',
+    help='number of steps if --engine=emcee. \
+DEFAULT=%d'%regressions.__num_steps)
+parser.add_option('', '--num-walkers', default=regressions.__num_walkers, type='int',
+    help='number of walkers if --engine=emcee. number of live points if --engine==pymultinest. \
+DEFAULT=%d'%regressions.__num_walkers)
+parser.add_option('', '--num-threads', default=regressions.__num_threads, type='int',
+    help='number of threads used within samplers. \
+DEFAULT=%d'%regressions.__num_threads)
+
+#--- parameters for likelihood
+
+parser.add_option('', '--thr', default=regressions.__thr, type='float',
+    help='the threshold value used when evaluating the likelihood. \
+DEFAULT=%f'%regressions.__thr)
+parser.add_option('', '--num-mc', default=models.__num_mc, type='int',
+    help='the number of monte carlo integration samples used when estimating signalData_pdf. \
+DEFAULT=%d'%models.__num_mc)
+#--- pin parameters or set prior bounds
 
 parser.add_option('', '--Rdt', default=None, type='float',
     help='pin the rate parameter to this value. \
 If not supplied, will attempt to regress it with prior bounds specified by --min-Rdt, --max-Rdt')
-parser.add_option('', '--min-Rdt', default=1e-8, type='float',
-    help='DEFAULT=1e-8')
-parser.add_option('', '--max-Rdt', default=1e-3, type='float',
-    help='DEFAULT=1e-3')
+parser.add_option('', '--min-Rdt', default=regressions.__min_Rdt, type='float',
+    help='DEFAULT=%e'%regressions.__min_Rdt)
+parser.add_option('', '--max-Rdt', default=regressions.__max_Rdt, type='float',
+    help='DEFAULT=%e'%regressions.__max_Rdt)
 
 parser.add_option('', '--alpha', default=None, type='float',
     help='pin the index to this value. \
 If not supplied, will attempt to regress it with prior bound specified by --min-alpha, --max-alpha')
-parser.add_option('', '--min-alpha', default=1, type='float',
-    help='DEFAULT=1')
-parser.add_option('', '--max-alpha', default=3, type='float',
-    help='DEFAULT=3')
+parser.add_option('', '--min-alpha', default=regressions.__min_alpha, type='float',
+    help='DEFAULT=%f'%regressions.__min_alpha)
+parser.add_option('', '--max-alpha', default=regressions.__max_alpha, type='float',
+    help='DEFAULT=%f'%regressions.__max_alpha)
 
 parser.add_option('', '--beta', default=None, type='float',
     help='pin the scale parameter to this value. \
 If not supplied, will attempt to regress it with prior bounds specified by --min-beta, --max-beta')
-parser.add_option('', '--min-beta', default=1e-5, type='float',
-    help='DEFAULT=1e-5')
-parser.add_option('', '--max-beta', default=1e-3, type='float',
-    help='DEFAULT=1e-3')
+parser.add_option('', '--min-beta', default=regressions.__min_beta, type='float',
+    help='DEFAULT=%e'%regressions.__min_beta)
+parser.add_option('', '--max-beta', default=regressions.__max_beta, type='float',
+    help='DEFAULT=%e'%regressions.__max_beta)
+
+#--- output formatting
 
 parser.add_option('-o', '--output-dir', default='.', type='string')
 parser.add_option('-t', '--tag', default='', type='string')
@@ -52,10 +77,13 @@ parser.add_option('-t', '--tag', default='', type='string')
 opts, args = parser.parse_args()
 assert len(args)==2, 'please supply exactly 2 input argument\n%s'%__usage__
 method, path = args
-assert method in regression.__known_methods, 'method must be one of : %s'%(', '.join(regressions.__known_methods))
+assert method in regressions.__known_methods, 'method must be one of : %s'%(', '.join(regressions.__known_methods))
+assert opts.engine in regressions.__known_engines, '--engine must be one of : %s'%(', '.join(regressions.__known_engins))
 
 if opts.tag:
     opts.tag = "_"+opts.tag
+
+opts.verbose |= opts.Verbose
 
 #-------------------------------------------------
 
@@ -66,10 +94,23 @@ num_epoch = len(data)
 
 #------------------------
 
-raise NotImplementedError, """\
-define likelihoods, priors and set up regression engines (regressions.py)
-need to define output data format, etc
-
-also need to define models that have non-uniform distributions over time
-    -> check whether non-observations are informative in the likelihood
-"""
+### run the regression. We delegate for this because why not?
+outpath = "%s/regress%s.txt.gz"%(opts.output_dir, opts.tag)
+if opts.verbose:
+    print( 'regressing model parameters -> %s'%outpath )
+regressions.regress(
+    data,
+    method, 
+    opts.engine, 
+    outpath, 
+    verbose=opts.Verbose, 
+    Rdt = opts.Rdt,
+    min_Rdt = opts.min_Rdt,
+    max_Rdt = opts.max_Rdt,
+    alpha = opts.alpha,
+    min_alpha = opts.min_alpha,
+    max_alpha = opts.max_alpha,
+    beta = opts.beta,
+    min_beta = opts.min_beta,
+    max_beta = opts.max_beta,
+)

@@ -19,6 +19,9 @@ __alpha = 2
 __beta = 1e-4
 __Rdt = 1e-5
 
+# default monte-carlo integration parameters
+__num_mc = 1e6
+
 #-------------------------------------------------
 
 #### noise distributions
@@ -62,17 +65,21 @@ def draw_signalData(Nsamp=1, alpha=__alpha, beta=__beta, **kwargs):
     """
     return np.array([ncx2.rvs(__noise_df, nc) for nc in __truncatedPareto_rvs(Nsamp, alpha=alpha, beta=beta)])
 
-def signalData_pdf(x, alpha=__alpha, beta=__beta, **kwargs):
+def signalData_pdf(x, alpha=__alpha, beta=__beta, num_mc=__num_mc, **kwargs):
     """
     evaluate the signal probability density function at x
+    this is done by monte carlo sampling from p(y|alpha, beta) and approximating the integral of ncx2.pdf(x, __noise_df, y)
     """
-    raise NotImplementedError, 'need to figure out how to calculate the marginalization over the latent variable quickly...'
+    y = __draw_truncatedPareto(Nsamp=num_mc, alpha=alpha, beta=beta) ### draw monte carlo samples from p(y|alpha, beta)
+    return np.exp(np.logaddexp([ncx2.logpdf(x, __noise_df, _) for _ in y]) - np.log(num_mc)) ### approximate the integral via importance sampling
 
-def signalData_cdf(x, alpha=__alpha, beta=__beta, **kwargs):
+def signalData_cdf(x, alpha=__alpha, beta=__beta, num_mc=__num_mc, **kwargs):
     """
     evaluate the signal cumulative density function for data<=x
+    this is done by monte carlo sampling from p(y|alpha, beta) and approximating the integral of ncx2.cdf(x, __noise_df, y)
     """
-    raise NotImplementedError, 'need to figure out how to calculate this quickly...'
+    y = __draw_truncatedPareto(Nsamp=num_mc, alpha=alpha, beta=beta)
+    return np.exp(np.logaddexp([ncx2.logcdf(x, __noise_df, _) for _ in y]) - np.log(num_mc))
 
 #-------------------------------------------------
 
