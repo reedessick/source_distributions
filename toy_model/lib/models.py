@@ -93,3 +93,11 @@ def draw_signalPresence(Nsamp=1, Rdt=__Rdt, **kwargs):
 
 def signalPresence_prob(Rdt=__Rdt, **kwargs):
     return 1-np.exp(-Rdt) 
+
+#-------------------------------------------------
+
+print """\
+WARING:
+also need to define models that have non-uniform distributions over time
+    -> check whether non-observations are informative in the likelihood
+"""

@@ -142,10 +142,36 @@ def lntarget(data, method, **kwargs):
     """
     return lnlikelihood(data, method, **kwargs) + lnprior(**kwargs)
 
+def __emcee_regress(
+      data,
+      method,
+      outpath,
+      thr=__thr,
+      Rdt=None,
+      min_Rdt = __min_Rdt,
+      max_Rdt = __max_Rdt,
+      alpha = None,
+      min_alpha = __min_alpha,
+      max_alpha = __max_alpha,
+      beta = None,
+      min_beta = __min_beta,
+      max_beta = __max_beta,
+      num_mc = models.__num_mc,
+      num_steps = __num_steps,
+      num_walkers = __num_walkers,
+      num_threads = __num_threads,
+      verbose=False,
+      **kwargs
+    ):
+    """
+    run emcee
+    """
+    raise NotImplementedError
+
 def regress(
-      data, 
-      method, 
-      engine, 
+      data,
+      method,
+      engine,
       outpath,
       thr=__thr,
       Rdt=None,
@@ -168,11 +194,28 @@ def regress(
     a single function call that will set up the regression and execute it
     output is written in a common data format for all engines and placed in outpath
     """
-    raise NotImplementedError
-
-
-print """\
-WARING:
-also need to define models that have non-uniform distributions over time
-    -> check whether non-observations are informative in the likelihood
-"""
+    if engine == "emcee":
+        __emcee_regress(
+              data,
+              method,
+              engine,
+              outpath,
+              thr=thr,
+              Rdt=Rdt,
+              min_Rdt = min_Rdt,
+              max_Rdt = max_Rdt,
+              alpha = alpha,
+              min_alpha = min_alpha,
+              max_alpha = max_alpha,
+              beta = beta,
+              min_beta = min_beta,
+              max_beta = max_beta,
+              num_mc = num_mc,
+              num_steps = num_steps,
+              num_walkers = num_walkers,
+              num_threads = num_threads,
+              verbose = Verbose,
+              **kwargs
+        )
+    else:
+        raise ValueError, 'engine=%s not understood'%engine

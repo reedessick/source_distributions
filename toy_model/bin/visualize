@@ -1,0 +1,36 @@
+#!/usr/bin/env python
+
+__usage__ = "visualize [--options] regression"
+__description__ = "generate plots and visualizations of the regression results. Also computes some basic statistics"
+__author__ = "Reed Essick (reed.essick@ligo.org)"
+
+#-------------------------------------------------
+
+from optparse import OptionParser
+
+#-------------------------------------------------
+
+parser = OptionParser(usage=__usage__, description=__description__)
+
+parser.add_option('-v', '--verbose', default=False, action='store_true')
+
+parser.add_option('-o', '--output-dir', default='.', type='string')
+parser.add_option('-t', '--tag', default='', type='string')
+
+opts, args = parser.parse_args()
+assert len(args)==1, 'please supply exactly 1 argument\n%s'%__usage__
+
+if opts.tag:
+    opts.tag = "_"+opts.tag
+
+#-------------------------------------------------
+
+raise NotImplementedError, """\
+need to implement 
+  * a corner plot
+  * 1-D marginals
+  * basic statistics
+    * mean, median, mode
+    * stdv, variance
+    * quantiles, confidence intervals
+"""
