@@ -68,7 +68,7 @@ def __renormalized_likelihood_above_threshold_lnlikelihood(data, thr=__thr, alph
     """
     truth = data[:,0]>=thr
     if np.any(truth):
-        norm = 1-models.signalData_cdf(thr, alpha=alpha, beta=beta, num_mc=num_mc) ### normalization of likelihood for data above threshold
+        norm = 1-np.exp(models.signalData_lncdf(thr, alpha=alpha, beta=beta, num_mc=num_mc)) ### normalization of likelihood for data above threshold
         return np.sum(models.signalData_lnpdf(data[truth][:,0], alpha=alpha, beta=beta, num_mc=num_mc) - np.log(norm))
 
     else:
@@ -125,7 +125,7 @@ def lnlikelihood(data, method, thr=__thr, alpha=models.__alpha, beta=models.__be
     if method == 'above_threshold_is_signal':
         return __above_threshold_is_signal_lnlikelihood(data, alpha=alpha, beta=beta, Rdt=Rdt, num_mc=num_mc, **kwargs)
 
-    elif method == 'above_threshod_all_models':
+    elif method == 'above_threshold_all_models':
         return __above_threshold_all_models_lnlikelihood(data, alpha=alpha, beta=beta, Rdt=Rdt, num_mc=num_mc, **kwargs)
 
     elif method == "renormalized_likelihood_above_threshold":
@@ -232,8 +232,8 @@ def __emcee_regress(
     if sample_alpha and sample_beta and sample_Rdt:
         if verbose:
             print( 'sampling : alpha, beta, Rdt')
-        lnL = lambda var_alpha, var_beta, var_Rdt : lnlikelihood(data, method, thr=thr, alpha=var_alpha, beta=var_beta, Rdt=var_Rdt, num_mc=num_mc)
-        lnP = lambda var_alpha, var_beta, var_Rdt : lnprior(var_alpha, var_beta, var_Rdt, **prior_kwargs)
+        lnL = lambda (var_alpha, var_beta, var_Rdt) : lnlikelihood(data, method, thr=thr, alpha=var_alpha, beta=var_beta, Rdt=var_Rdt, num_mc=num_mc)
+        lnP = lambda (var_alpha, var_beta, var_Rdt) : lnprior(var_alpha, var_beta, var_Rdt, **prior_kwargs)
         template = "%.9e %.9e %.9e"
         num_dim = 3
         p0 = np.array([
@@ -245,8 +245,8 @@ def __emcee_regress(
     elif sample_alpha and sample_beta:
         if verbose:
             print( 'sampling : alpha, beta')
-        lnL = lambda var_alpha, var_beta : lnlikelihood(data, method, thr=thr, alpha=var_alpha, beta=var_beta, Rdt=Rdt, num_mc=num_mc)
-        lnP = lambda var_alpha, var_beta : lnprior(var_alpha, var_beta, Rdt, **prior_kwargs)
+        lnL = lambda (var_alpha, var_beta) : lnlikelihood(data, method, thr=thr, alpha=var_alpha, beta=var_beta, Rdt=Rdt, num_mc=num_mc)
+        lnP = lambda (var_alpha, var_beta) : lnprior(var_alpha, var_beta, Rdt, **prior_kwargs)
         template = "%.9e %.9e "+"%.9e"%Rdt
         num_dim = 2
         p0 = np.array([
@@ -257,8 +257,8 @@ def __emcee_regress(
     elif sample_alpha and sample_Rdt:
         if verbose:
             print( 'sampling : alpha, Rdt')
-        lnL = lambda var_alpha, var_Rdt : lnlikelihood(data, method, thr=thr, alpha=var_alpha, beta=beta, Rdt=var_Rdt, num_mc=num_mc)
-        lnP = lambda var_alpha, var_Rdt : lnprior(var_alpha, beta, var_Rdt, **prior_kwargs)
+        lnL = lambda (var_alpha, var_Rdt) : lnlikelihood(data, method, thr=thr, alpha=var_alpha, beta=beta, Rdt=var_Rdt, num_mc=num_mc)
+        lnP = lambda (var_alpha, var_Rdt) : lnprior(var_alpha, beta, var_Rdt, **prior_kwargs)
         template = "%.9e "+"%.9e"%beta+" %.9e"
         num_dim = 2
         p0 = np.array([
@@ -269,8 +269,8 @@ def __emcee_regress(
     elif sample_beta and sample_Rdt:
         if verbose:
             print( 'sampling : beta, Rdt')
-        lnL = lambda var_beta, var_Rdt : lnlikelihood(data, method, thr=thr, alpha=alpha, beta=var_beta, Rdt=var_Rdt, num_mc=num_mc)
-        lnP = lambda var_beta, var_Rdt : lnprior(alpha, var_beta, var_Rdt, **prior_kwargs)
+        lnL = lambda (var_beta, var_Rdt) : lnlikelihood(data, method, thr=thr, alpha=alpha, beta=var_beta, Rdt=var_Rdt, num_mc=num_mc)
+        lnP = lambda (var_beta, var_Rdt) : lnprior(alpha, var_beta, var_Rdt, **prior_kwargs)
         template = "%.9e"%alpha+" %.9e %.9e"
         num_dim = 2
         p0 = np.array([
