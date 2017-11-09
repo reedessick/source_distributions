@@ -1,12 +1,30 @@
 #!/usr/bin/env python
 
-__usage__ = "visualize [--options] regression"
+__usage__ = "visualize [--options]"
 __description__ = "generate plots and visualizations of the regression results. Also computes some basic statistics"
 __author__ = "Reed Essick (reed.essick@ligo.org)"
 
 #-------------------------------------------------
 
+import numpy as np
+
+import matplotlib
+matplotlib.use("Agg")
+from matplotlib import pyplot as plt
+
+import corner
+
+import models
+
 from optparse import OptionParser
+
+#-------------------------------------------------
+
+labels = {
+    'alpha' : r'$\alpha$', 
+    'beta' : r'$\beta$', 
+    'Rdt' : '$Rdt$',
+}
 
 #-------------------------------------------------
 
@@ -14,21 +32,112 @@ parser = OptionParser(usage=__usage__, description=__description__)
 
 parser.add_option('-v', '--verbose', default=False, action='store_true')
 
+parser.add_option('-d', '--simulate', default=None, type='string', 
+    help='path to the output of simulate')
+parser.add_option('-r', '--regress', default=None, type='string',
+    help='path to the output of regress')
+
+parser.add_option('', '--corner-no-alpha', default=False, action='store_true')
+parser.add_option('', '--corner-no-beta', default=False, action='store_true')
+parser.add_option('', '--corner-no-Rdt', default=False, action='store_true')
+
+parser.add_option('', '--num-plotting-points', default=101, type='int',
+    help='used when plotting inferred distributions')
+
 parser.add_option('-o', '--output-dir', default='.', type='string')
 parser.add_option('-t', '--tag', default='', type='string')
 
 opts, args = parser.parse_args()
-assert len(args)==1, 'please supply exactly 1 argument\n%s'%__usage__
 
 if opts.tag:
     opts.tag = "_"+opts.tag
 
 #-------------------------------------------------
 
-raise NotImplementedError, """\
+if opts.regress:
+    if opts.verbose:
+        print( "reading samples from : %s"%opts.regress )
+    samples = np.genfromtxt(opts.regress, names=True)
+
+    if opts.corner_no_alpha:
+        labels.pop('alpha')
+    if opts.corner_no_beta:
+        labels.pop('beta')
+    if opts.corner_no_Rdt:
+        labels.pop('Rdt')
+    assert labels, 'no variables left to plot!'
+
+    if opts.verbose:
+        print( "generating corner plot for : %s"%(', '.join(labels.keys())) )
+
+    fig = corner.corner(
+        np.array([samples[key] for key in labels.keys()]).transpose(),
+        labels=[labels[key] for key in labels.keys()],
+    )
+
+    figname = "%s/visualize_corner%s.png"%(opts.output_dir, opts.tag)
+    if opts.verbose:
+        print( "    "+figname )
+    fig.savefig(figname)
+    plt.close(fig)
+
+#------------------------
+
+if opts.simulate!=None: ### histogram the data
+    if opts.verbose:
+        print( "reading data from : %s"%opts.simulate )
+    data = np.loadtxt(opts.simulate)
+    num_epochs = len(data)
+
+    noise = data[data[:,1]==0]
+    signals = data[data[:,1]==1]
+
+    if opts.verbose:
+        print( "generating histogram" )
+
+    fig = plt.figure()
+    ax = fig.gca()
+
+    _, bins, _ = ax.hist(data[:,0], bins=max(int(num_epochs)**0.5, 10), histtype='step', label='observed', log=True)
+    ax.hist(signals[:,0], bins=bins, histtype='step', label='signals', log=True)
+    ax.hist(noise[:,0], bins=bins, histtype='step', label='noise', log=True)
+
+    ax.set_xlabel(r'$\rho^2$')
+    ax.set_ylabel('count')
+
+    ax.grid(True, which='both')
+    ax.legend(loc='best')
+
+    figname = "%s/visualize_data%s.png"%(opts.output_dir, opts.tag)
+    if opts.verbose:
+        print( "    "+figname )
+    fig.savefig(figname)
+
+    #--- plot overlaid distributions from samples
+
+    if opts.regress: ### plot overlaid distributions from samples
+        if opts.verbose:
+            print( "overlaying inferred distributions" )
+        x = np.linspace(bins[0], bins[-1], opts.num_plotting_points)
+        N = len(samples)
+        dbins = bins[1]-bins[0] ### assumed constant bin width
+        for alpha, beta, Rdt in zip(samples['alpha'], samples['beta'], samples['Rdt']):
+            pRdt = models.signalPresence_prob(Rdt=Rdt)
+            y = num_epochs*dbins*(models.noiseData_pdf(x)*(1-pRdt) + models.signalData_pdf(x, alpha=alpha, beta=beta)*pRdt)
+            ax.plot(x, y, alpha=1./N)
+
+        figname = "%s/visualize_data+model%s.png"%(opts.output_dir, opts.tag)
+        if opts.verbose:
+            print( "    "+figname )
+        fig.savefig(figname)
+
+    plt.close(fig)
+
+#-------------------------------------------------
+
+print """\
+WARNING: 
 need to implement 
-  * a corner plot
-  * 1-D marginals
   * basic statistics
     * mean, median, mode
     * stdv, variance

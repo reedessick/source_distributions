@@ -50,18 +50,19 @@ if opts.tag:
 path = "%s/simulate%s.txt.gz"%(opts.output_dir, opts.tag)
 if opts.verbose:
     print( "writing : %s"%path )
+file_obj = gzip.open(path, 'w')
 
 if opts.verbose:
     print( "simulating %d epochs"%opts.num_epoch )
-temp = '\r    %d / '+'%d'%opts.num_epoch
+tmp = '\r    %d / '+'%d'%opts.num_epoch
 for _ in xrange(opts.num_epoch):
     if opts.verbose:
         sys.stdout.write(tmp%(_+1))
 
     if models.draw_signalPresence(Nsamp=1, Rdt=opts.Rdt)[0]: ### there is a signal in this time step
-        print >> file_obj, '%.9f'%models.draw_signalData(Nsamp=1, alpha=opts.alpha, beta=opts.beta), True
+        print >> file_obj, '%.9f 1'%models.draw_signalData(Nsamp=1, alpha=opts.alpha, beta=opts.beta)
     else: 
-        print >> file_obj, '%.9f'%models.draw_noiseData(Nsamp=1, alpha=opts.alpha, beta=opts.beta), False
+        print >> file_obj, '%.9f 0'%models.draw_noiseData(Nsamp=1, alpha=opts.alpha, beta=opts.beta)
 
 if opts.verbose:
     sys.stdout.write('\n')

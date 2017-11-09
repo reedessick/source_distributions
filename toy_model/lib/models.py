@@ -20,7 +20,22 @@ __beta = 1e-4
 __Rdt = 1e-5
 
 # default monte-carlo integration parameters
-__num_mc = 1e6
+__num_mc = 100
+
+#-------------------------------------------------
+
+def __logaddexp(array_like, axis=0):
+    '''
+    does the same thing as np.logaddexp, but sums all elements in the array instead of summing 2 arrays.
+    returns a float
+    if there is more than one index, we sum over the axis specified by "axis"
+    '''
+    if len(np.shape(array_like))==1:
+        m = np.max(array_like)
+        return m + np.log(np.sum(np.exp(np.array(array_like)-m)))
+    else:
+        m = np.max(array_like, axis=axis)
+        return m + np.log(np.sum(np.exp(np.array(array_like)-m), axis=axis))
 
 #-------------------------------------------------
 
@@ -32,17 +47,17 @@ def draw_noiseData(Nsamp=1, **kwargs):
     """
     return chi2.rvs(__noise_df, size=Nsamp)
 
-def noiseData_pdf(x, **kwargs):
+def noiseData_lnpdf(x, **kwargs):
     """
     evaluate the noise probability density function at x
     """
-    return chi2.pdf(x, __noise_df)
+    return chi2.logpdf(x, __noise_df)
 
-def noiseData_cdf(x, **kwargs):
+def noiseData_lncdf(x, **kwargs):
     """
     evaluate the noise cumulative density function for data<=x
     """
-    return chi2.cdf(x, __noise_df)
+    return chi2.logcdf(x, __noise_df)
 
 #-------------------------------------------------
 
@@ -52,34 +67,34 @@ def noiseData_cdf(x, **kwargs):
 def __draw_truncatedPareto(Nsamp=1, alpha=__alpha, beta=__beta, **kwargs):
     return beta*((1-np.random.rand(Nsamp))**(-1./alpha) - 1) ### 
 
-def __truncatedPareto_pdf(x, alpha=__alpha, beta=__beta, **kwargs):
-    return (alpha/beta)*(1+x/beta)**(-alpha-1)
+def __truncatedPareto_lnpdf(x, alpha=__alpha, beta=__beta, **kwargs):
+    return np.log(alpha/beta) - (alpha+1)*np.log(1+x/beta)
 
-def __truncatedPareto_cdf(x, alpha=__alpha, beta=__beta, **kwargs):
-    return 1 - (1-x/beta)**(-alpha)
+def __truncatedPareto_lncdf(x, alpha=__alpha, beta=__beta, **kwargs):
+    return np.log(1 - (1-x/beta)**(-alpha))
 
 # distribution of noisy observations, marginalized over latent variable
 def draw_signalData(Nsamp=1, alpha=__alpha, beta=__beta, **kwargs):
     """
     draw an SNR from the signal distribution
     """
-    return np.array([ncx2.rvs(__noise_df, nc) for nc in __truncatedPareto_rvs(Nsamp, alpha=alpha, beta=beta)])
+    return np.array([ncx2.rvs(__noise_df, nc) for nc in __draw_truncatedPareto(Nsamp, alpha=alpha, beta=beta)])
 
-def signalData_pdf(x, alpha=__alpha, beta=__beta, num_mc=__num_mc, **kwargs):
+def signalData_lnpdf(x, alpha=__alpha, beta=__beta, num_mc=__num_mc, **kwargs):
     """
     evaluate the signal probability density function at x
     this is done by monte carlo sampling from p(y|alpha, beta) and approximating the integral of ncx2.pdf(x, __noise_df, y)
     """
     y = __draw_truncatedPareto(Nsamp=num_mc, alpha=alpha, beta=beta) ### draw monte carlo samples from p(y|alpha, beta)
-    return np.exp(np.logaddexp([ncx2.logpdf(x, __noise_df, _) for _ in y]) - np.log(num_mc)) ### approximate the integral via importance sampling
+    return __logaddexp([ncx2.logpdf(x, __noise_df, _) for _ in y]) - np.log(num_mc) ### approximate the integral via importance sampling
 
-def signalData_cdf(x, alpha=__alpha, beta=__beta, num_mc=__num_mc, **kwargs):
+def signalData_lncdf(x, alpha=__alpha, beta=__beta, num_mc=__num_mc, **kwargs):
     """
     evaluate the signal cumulative density function for data<=x
     this is done by monte carlo sampling from p(y|alpha, beta) and approximating the integral of ncx2.cdf(x, __noise_df, y)
     """
     y = __draw_truncatedPareto(Nsamp=num_mc, alpha=alpha, beta=beta)
-    return np.exp(np.logaddexp([ncx2.logcdf(x, __noise_df, _) for _ in y]) - np.log(num_mc))
+    return __logaddexp([ncx2.logcdf(x, __noise_df, _) for _ in y]) - np.log(num_mc)
 
 #-------------------------------------------------
 
@@ -92,7 +107,7 @@ def draw_signalPresence(Nsamp=1, Rdt=__Rdt, **kwargs):
     return (np.random.rand(Nsamp) > np.exp(-Rdt))
 
 def signalPresence_prob(Rdt=__Rdt, **kwargs):
-    return 1-np.exp(-Rdt) 
+    return np.log(1-np.exp(-Rdt))
 
 #-------------------------------------------------
 

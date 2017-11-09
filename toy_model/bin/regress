@@ -11,7 +11,7 @@ from optparse import OptionParser
 
 __usage__ = "regress [--options] method data"
 __description__ = "regress parameters out of the toy model. \
-The regression method can be specified on the command line and should be one of : %s"%(', '.join(regressions.__known_methods))
+The regression method can be specified on the command line and should be one of : %s"%(',  '.join(regressions.__known_methods))
 __author__ = "Reed Essick (reed.essick@ligo.org)"
 
 #-------------------------------------------------
@@ -71,6 +71,8 @@ parser.add_option('', '--max-beta', default=regressions.__max_beta, type='float'
 
 #--- output formatting
 
+parser.add_option('', '--no-gzip', default=False, action='store_true')
+
 parser.add_option('-o', '--output-dir', default='.', type='string')
 parser.add_option('-t', '--tag', default='', type='string')
 
@@ -95,7 +97,9 @@ num_epoch = len(data)
 #------------------------
 
 ### run the regression. We delegate for this because why not?
-outpath = "%s/regress%s.txt.gz"%(opts.output_dir, opts.tag)
+outpath = "%s/regress%s.txt"%(opts.output_dir, opts.tag)
+if not opts.no_gzip:
+    outpath = outpath + ".gz"
 if opts.verbose:
     print( 'regressing model parameters -> %s'%outpath )
 regressions.regress(
@@ -113,4 +117,7 @@ regressions.regress(
     beta = opts.beta,
     min_beta = opts.min_beta,
     max_beta = opts.max_beta,
+    num_steps = opts.num_steps,
+    num_walkers = opts.num_walkers,
+    num_threads = opts.num_threads,
 )
