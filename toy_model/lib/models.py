@@ -24,18 +24,18 @@ __num_mc = 100
 
 #-------------------------------------------------
 
-def __logaddexp(array_like, axis=0):
+def __logaddexp(array_like):
     '''
     does the same thing as np.logaddexp, but sums all elements in the array instead of summing 2 arrays.
     returns a float
-    if there is more than one index, we sum over the axis specified by "axis"
+    if there is more than one index, we sum over the axis=0
     '''
     if len(np.shape(array_like))==1:
         m = np.max(array_like)
         return m + np.log(np.sum(np.exp(np.array(array_like)-m)))
     else:
-        m = np.max(array_like, axis=axis)
-        return m + np.log(np.sum(np.exp(np.array(array_like)-m), axis=axis))
+        m = np.max(array_like, axis=0)
+        return m + np.log(np.sum(np.exp(np.array(array_like)-m), axis=0))
 
 #-------------------------------------------------
 
@@ -85,16 +85,44 @@ def signalData_lnpdf(x, alpha=__alpha, beta=__beta, num_mc=__num_mc, **kwargs):
     evaluate the signal probability density function at x
     this is done by monte carlo sampling from p(y|alpha, beta) and approximating the integral of ncx2.pdf(x, __noise_df, y)
     """
-    y = __draw_truncatedPareto(Nsamp=num_mc, alpha=alpha, beta=beta) ### draw monte carlo samples from p(y|alpha, beta)
-    return __logaddexp([ncx2.logpdf(x, __noise_df, _) for _ in y]) - np.log(num_mc) ### approximate the integral via importance sampling
+    y = np.outer(__draw_truncatedPareto(Nsamp=num_mc, alpha=alpha, beta=beta), np.ones_like(x)) ### draw monte carlo samples from p(y|alpha, beta)
+    x = np.outer(np.ones(num_mc), x)
+
+    ans = ncx2.logpdf(x, __noise_df, y)
+
+    ### FIXME: 
+    ### there is a wrapping problem with calls to scipy.stats.ncx2 when the parameters get really big
+    ###    pragmatically, this seems to happen when y >> x, but it also happens when x~y>>1
+    ###    until we can find a better solution, we will simply set any positive values to -infty so they are negligible within __logaddexp
+    ###    this should be the correct thing when y>>x, which we think is mostly what happens
+    ans[ans>0] = -np.infty
+
+    return __logaddexp(ans) - np.log(num_mc)
+
+#    y = __draw_truncatedPareto(Nsamp=num_mc, alpha=alpha, beta=beta) ### draw monte carlo samples from p(y|alpha, beta)
+#    ans = __logaddexp([ncx2.logpdf(x, __noise_df, _) for _ in y]) - np.log(num_mc)
+#    return __logaddexp([ncx2.logpdf(x, __noise_df, _) for _ in y]) - np.log(num_mc) ### approximate the integral via importance sampling
 
 def signalData_lncdf(x, alpha=__alpha, beta=__beta, num_mc=__num_mc, **kwargs):
     """
     evaluate the signal cumulative density function for data<=x
     this is done by monte carlo sampling from p(y|alpha, beta) and approximating the integral of ncx2.cdf(x, __noise_df, y)
     """
-    y = __draw_truncatedPareto(Nsamp=num_mc, alpha=alpha, beta=beta)
-    return __logaddexp([ncx2.logcdf(x, __noise_df, _) for _ in y]) - np.log(num_mc)
+    y = np.outer(__draw_truncatedPareto(Nsamp=num_mc, alpha=alpha, beta=beta), np.ones_like(x))
+    x = np.outer(np.ones(num_mc), x)
+    ans = __logaddexp(ncx2.logcdf(x, __noise_df, y)) - np.log(num_mc)
+
+    ### FIXME: 
+    ### there is a wrapping problem with calls to scipy.stats.ncx2 when the parameters get really big
+    ###    pragmatically, this seems to happen when y >> x, but it also happens when x~y>>1
+    ###    until we can find a better solution, we will simply set any positive values to -infty so they are negligible within __logaddexp
+    ###    this should be the correct thing when y>>x, which we think is mostly what happens
+    ans[ans>0] = -np.infty
+
+    return __logaddexp(ans) - np.log(num_mc)
+
+#    y = __draw_truncatedPareto(Nsamp=num_mc, alpha=alpha, beta=beta)
+#    return __logaddexp([ncx2.logcdf(x, __noise_df, _) for _ in y]) - np.log(num_mc)
 
 #-------------------------------------------------
 
@@ -107,7 +135,7 @@ def draw_signalPresence(Nsamp=1, Rdt=__Rdt, **kwargs):
     return (np.random.rand(Nsamp) > np.exp(-Rdt))
 
 def signalPresence_prob(Rdt=__Rdt, **kwargs):
-    return np.log(1-np.exp(-Rdt))
+    return 1-np.exp(-Rdt)
 
 #-------------------------------------------------
 

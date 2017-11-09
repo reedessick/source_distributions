@@ -51,30 +51,30 @@ __num_threads = 1
 
 #-------------------------------------------------
 
-def __above_threshold_is_signal_lnlikelihood(data, thr=__thr, alpha=models.__alpha, beta=models.__beta, **kwargs):
+def __above_threshold_is_signal_lnlikelihood(data, thr=__thr, alpha=models.__alpha, beta=models.__beta, num_mc=models.__num_mc, **kwargs):
     """
     only include data that is above thr and treats them all as signals
     """
     truth = data[:,0]>=thr
     if np.any(truth):
-        return np.sum(models.signalData_lnpdf(data[truth][:,0], alpha=alpha, beta=beta))
+        return np.sum(models.signalData_lnpdf(data[truth][:,0], alpha=alpha, beta=beta, num_mc=num_mc))
 
     else:
         return 0
 
-def __renormalized_likelihood_above_threshold_lnlikelihood(data, thr=__thr, alpha=models.__alpha, beta=models.__beta, **kwargs):
+def __renormalized_likelihood_above_threshold_lnlikelihood(data, thr=__thr, alpha=models.__alpha, beta=models.__beta, num_mc=models.__num_mc, **kwargs):
     """
     only include data that is above thr, treats them all as signals, and renormalizes the likelihood so that it only covers "detectable data"
     """
     truth = data[:,0]>=thr
     if np.any(truth):
-        norm = 1-models.signalData_cdf(thr, alpha=alpha, beta=beta) ### normalization of likelihood for data above threshold
-        return np.sum(models.signalData_lnpdf(data[truth][:,0], alpha=alpha, beta=beta) - np.log(norm))
+        norm = 1-models.signalData_cdf(thr, alpha=alpha, beta=beta, num_mc=num_mc) ### normalization of likelihood for data above threshold
+        return np.sum(models.signalData_lnpdf(data[truth][:,0], alpha=alpha, beta=beta, num_mc=num_mc) - np.log(norm))
 
     else:
         return 0
 
-def __above_threshold_all_models_lnlikelihood(data, thr=__thr, alpha=models.__alpha, beta=models.__beta, Rdt=models.__Rdt, **kwargs):
+def __above_threshold_all_models_lnlikelihood(data, thr=__thr, alpha=models.__alpha, beta=models.__beta, Rdt=models.__Rdt, num_mc=models.__num_mc, **kwargs):
     """
     only include data that is above a threshold and treats them all as signals
     """
@@ -84,7 +84,7 @@ def __above_threshold_all_models_lnlikelihood(data, thr=__thr, alpha=models.__al
 
         ### work with Logs for accuracies sake...
         lnpNoise = models.noiseData_lnpdf(selected[:,0]) + np.log(1-pRdt)
-        lnpSignal = models.signalData_lnpdf(selected[:,0], alpha=alpha, beta=beta) + np.log(pRdt)
+        lnpSignal = models.signalData_lnpdf(selected[:,0], alpha=alpha, beta=beta, num_mc=num_mc) + np.log(pRdt)
 
         ### add models together
         return np.sum(np.logaddexp(lnpNoise, lnpSignal))
@@ -92,7 +92,7 @@ def __above_threshold_all_models_lnlikelihood(data, thr=__thr, alpha=models.__al
     else:
         return 0
 
-def __all_data_all_models_lnlikelihood(data, thr=__thr, alpha=models.__alpha, beta=models.__beta, Rdt=models.__Rdt, **kwargs):
+def __all_data_all_models_lnlikelihood(data, thr=__thr, alpha=models.__alpha, beta=models.__beta, Rdt=models.__Rdt, num_mc=models.__num_mc, **kwargs):
     """
     explicitly include all models in the likelihood and marginalize over "unobserved" data that is below thr
     """
@@ -106,33 +106,33 @@ def __all_data_all_models_lnlikelihood(data, thr=__thr, alpha=models.__alpha, be
 
     ### data above threshold
     lnpNoiseAbove = models.noiseData_lnpdf(above[:,0]) + a
-    lnpSignalAbove = models.signalData_lnpdf(above[:,0], alpha=alpha, beta=beta) + b
+    lnpSignalAbove = models.signalData_lnpdf(above[:,0], alpha=alpha, beta=beta, num_mc=num_mc) + b
 
     ### (marginalized) data below threshold
     Nbelow = len(below)
     lnpNoiseBelow = models.noiseData_lncdf(thr) + a
-    lnpSignalBelow = models.signalData_lncdf(thr, alpha=alpha, beta=beta) + b
+    lnpSignalBelow = models.signalData_lncdf(thr, alpha=alpha, beta=beta, num_mc=num_mc) + b
 
     ### add everything together
     return np.sum(np.logaddexp(lnpNoiseAbove, lnpSignalAbove)) + Nbelow*np.logaddexp(lnpNoiseBelow, lnpSignalBelow)
 
 #--- a single routing function, because that's how we're doing things (abstract the library away from the executable)
 
-def lnlikelihood(data, method, thr=__thr, alpha=models.__alpha, beta=models.__beta, Rdt=models.__Rdt, **kwargs):
+def lnlikelihood(data, method, thr=__thr, alpha=models.__alpha, beta=models.__beta, Rdt=models.__Rdt, num_mc=models.__num_mc, **kwargs):
     """
     compute the likelihood
     """
     if method == 'above_threshold_is_signal':
-        return __above_threshold_is_signal_lnlikelihood(data, alpha=alpha, beta=beta, Rdt=Rdt, **kwargs)
+        return __above_threshold_is_signal_lnlikelihood(data, alpha=alpha, beta=beta, Rdt=Rdt, num_mc=num_mc, **kwargs)
 
     elif method == 'above_threshod_all_models':
-        return __above_threshold_all_models_lnlikelihood(data, alpha=alpha, beta=beta, Rdt=Rdt, **kwargs)
+        return __above_threshold_all_models_lnlikelihood(data, alpha=alpha, beta=beta, Rdt=Rdt, num_mc=num_mc, **kwargs)
 
     elif method == "renormalized_likelihood_above_threshold":
-        return __renormalized_likelihood_above_threshold_lnlikelihood(data, alpha=alpha, beta=beta, Rdt=Rdt, **kwargs)
+        return __renormalized_likelihood_above_threshold_lnlikelihood(data, alpha=alpha, beta=beta, Rdt=Rdt, num_mc=num_mc, **kwargs)
 
     elif method == "all_data_all_models":
-        return __all_data_all_models_lnlikelihood(data, alpha=alpha, beta=beta, Rdt=Rdt, **kwargs)
+        return __all_data_all_models_lnlikelihood(data, alpha=alpha, beta=beta, Rdt=Rdt, num_mc=num_mc, **kwargs)
 
     else:
         raise ValueError, 'method=%s not understood'%method
@@ -232,7 +232,7 @@ def __emcee_regress(
     if sample_alpha and sample_beta and sample_Rdt:
         if verbose:
             print( 'sampling : alpha, beta, Rdt')
-        lnL = lambda var_alpha, var_beta, var_Rdt : lnlikelihood(data, method, thr=thr, alpha=var_alpha, beta=var_beta, Rdt=var_Rdt)
+        lnL = lambda var_alpha, var_beta, var_Rdt : lnlikelihood(data, method, thr=thr, alpha=var_alpha, beta=var_beta, Rdt=var_Rdt, num_mc=num_mc)
         lnP = lambda var_alpha, var_beta, var_Rdt : lnprior(var_alpha, var_beta, var_Rdt, **prior_kwargs)
         template = "%.9e %.9e %.9e"
         num_dim = 3
@@ -245,7 +245,7 @@ def __emcee_regress(
     elif sample_alpha and sample_beta:
         if verbose:
             print( 'sampling : alpha, beta')
-        lnL = lambda var_alpha, var_beta : lnlikelihood(data, method, thr=thr, alpha=var_alpha, beta=var_beta, Rdt=Rdt)
+        lnL = lambda var_alpha, var_beta : lnlikelihood(data, method, thr=thr, alpha=var_alpha, beta=var_beta, Rdt=Rdt, num_mc=num_mc)
         lnP = lambda var_alpha, var_beta : lnprior(var_alpha, var_beta, Rdt, **prior_kwargs)
         template = "%.9e %.9e "+"%.9e"%Rdt
         num_dim = 2
@@ -257,7 +257,7 @@ def __emcee_regress(
     elif sample_alpha and sample_Rdt:
         if verbose:
             print( 'sampling : alpha, Rdt')
-        lnL = lambda var_alpha, var_Rdt : lnlikelihood(data, method, thr=thr, alpha=var_alpha, beta=beta, Rdt=var_Rdt)
+        lnL = lambda var_alpha, var_Rdt : lnlikelihood(data, method, thr=thr, alpha=var_alpha, beta=beta, Rdt=var_Rdt, num_mc=num_mc)
         lnP = lambda var_alpha, var_Rdt : lnprior(var_alpha, beta, var_Rdt, **prior_kwargs)
         template = "%.9e "+"%.9e"%beta+" %.9e"
         num_dim = 2
@@ -269,7 +269,7 @@ def __emcee_regress(
     elif sample_beta and sample_Rdt:
         if verbose:
             print( 'sampling : beta, Rdt')
-        lnL = lambda var_beta, var_Rdt : lnlikelihood(data, method, thr=thr, alpha=alpha, beta=var_beta, Rdt=var_Rdt)
+        lnL = lambda var_beta, var_Rdt : lnlikelihood(data, method, thr=thr, alpha=alpha, beta=var_beta, Rdt=var_Rdt, num_mc=num_mc)
         lnP = lambda var_beta, var_Rdt : lnprior(alpha, var_beta, var_Rdt, **prior_kwargs)
         template = "%.9e"%alpha+" %.9e %.9e"
         num_dim = 2
@@ -281,7 +281,7 @@ def __emcee_regress(
     elif sample_alpha:
         if verbose:
             print( 'sampling : alpha')
-        lnL = lambda (var_alpha,) : lnlikelihood(data, method, thr=thr, alpha=var_alpha, beta=beta, Rdt=Rdt)
+        lnL = lambda (var_alpha,) : lnlikelihood(data, method, thr=thr, alpha=var_alpha, beta=beta, Rdt=Rdt, num_mc=num_mc)
         lnP = lambda (var_alpha,) : lnprior(var_alpha, beta, Rdt, **prior_kwargs)
         template = "%.9e "+"%.9e %.9e"%(beta, Rdt)
         num_dim = 1
@@ -292,7 +292,7 @@ def __emcee_regress(
     elif sample_beta:
         if verbose:
             print( 'sampling : beta')
-        lnL = lambda (var_beta,) : lnlikelihood(data, method, thr=thr, alpha=alpha, beta=var_beta, Rdt=Rdt) 
+        lnL = lambda (var_beta,) : lnlikelihood(data, method, thr=thr, alpha=alpha, beta=var_beta, Rdt=Rdt, num_mc=num_mc) 
         lnP = lambda (var_beta,) : lnprior(alpha, var_beta, Rdt, **prior_kwargs)
         template = "%.9e"%alpha+" %.9e "+"%.9e"%Rdt
         num_dim = 1
@@ -303,7 +303,7 @@ def __emcee_regress(
     elif sample_Rdt:
         if verbose:
             print( 'sampling : Rdt')
-        lnL = lambda (var_Rdt,) : lnlikelihood(data, method, thr=thr, alpha=alpha, beta=beta, Rdt=var_Rdt)
+        lnL = lambda (var_Rdt,) : lnlikelihood(data, method, thr=thr, alpha=alpha, beta=beta, Rdt=var_Rdt, num_mc=num_mc)
         lnP = lambda (var_Rdt,) : lnprior(alpha, beta, var_Rdt, **prior_kwargs)
         template = "%.9e %.9e "%(alpha, beta)+"%.9e"
         num_dim = 1

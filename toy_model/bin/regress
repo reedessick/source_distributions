@@ -117,6 +117,7 @@ regressions.regress(
     beta = opts.beta,
     min_beta = opts.min_beta,
     max_beta = opts.max_beta,
+    num_mc = opts.num_mc,
     num_steps = opts.num_steps,
     num_walkers = opts.num_walkers,
     num_threads = opts.num_threads,

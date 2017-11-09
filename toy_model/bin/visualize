@@ -37,12 +37,21 @@ parser.add_option('-d', '--simulate', default=None, type='string',
 parser.add_option('-r', '--regress', default=None, type='string',
     help='path to the output of regress')
 
+parser.add_option('', '--alpha-beta-Rdt', nargs=3, default=None, type='float',
+    help='the truth values for corner plot')
+parser.add_option('', '--thr', default=None, type='float',
+    help='annotation for data histograms showing where threshold was')
+
 parser.add_option('', '--corner-no-alpha', default=False, action='store_true')
 parser.add_option('', '--corner-no-beta', default=False, action='store_true')
 parser.add_option('', '--corner-no-Rdt', default=False, action='store_true')
 
 parser.add_option('', '--num-plotting-points', default=101, type='int',
     help='used when plotting inferred distributions')
+parser.add_option('', '--num-mc', default=models.__num_mc, type='int')
+parser.add_option('', '--plot-every-N', default=1, type='int',
+    help='plot overlays of every 1 out of N posterior samples in data histogram. \
+DEFAULT=1')
 
 parser.add_option('-o', '--output-dir', default='.', type='string')
 parser.add_option('-t', '--tag', default='', type='string')
@@ -69,6 +78,9 @@ if opts.regress:
 
     if opts.verbose:
         print( "generating corner plot for : %s"%(', '.join(labels.keys())) )
+
+    if opts.alpha_beta_Rdt!=None:
+        print "WARNING: truth values for corner plot are not yet implemented!"
 
     fig = corner.corner(
         np.array([samples[key] for key in labels.keys()]).transpose(),
@@ -108,6 +120,11 @@ if opts.simulate!=None: ### histogram the data
     ax.grid(True, which='both')
     ax.legend(loc='best')
 
+    if opts.thr!=None:
+        ylim = ax.get_ylim()
+        ax.plot([opts.thr]*2, ylim, 'k-', linewidth=2, alpha=0.5)
+        ax.set_ylim(ylim)
+
     figname = "%s/visualize_data%s.png"%(opts.output_dir, opts.tag)
     if opts.verbose:
         print( "    "+figname )
@@ -118,13 +135,20 @@ if opts.simulate!=None: ### histogram the data
     if opts.regress: ### plot overlaid distributions from samples
         if opts.verbose:
             print( "overlaying inferred distributions" )
+
+        plot_alpha = (1.*opts.plot_every_N/len(samples))**0.5
+        plot_norm = (bins[1]-bins[0])*num_epochs ### normalization for model overlays
+
         x = np.linspace(bins[0], bins[-1], opts.num_plotting_points)
-        N = len(samples)
-        dbins = bins[1]-bins[0] ### assumed constant bin width
-        for alpha, beta, Rdt in zip(samples['alpha'], samples['beta'], samples['Rdt']):
+        for alpha, beta, Rdt in zip(samples['alpha'], samples['beta'], samples['Rdt'])[::opts.plot_every_N]:
             pRdt = models.signalPresence_prob(Rdt=Rdt)
-            y = num_epochs*dbins*(models.noiseData_pdf(x)*(1-pRdt) + models.signalData_pdf(x, alpha=alpha, beta=beta)*pRdt)
-            ax.plot(x, y, alpha=1./N)
+
+            yNoise = models.noiseData_lnpdf(x) + np.log(1-pRdt)
+            ySignal = models.signalData_lnpdf(x, alpha=alpha, beta=beta, num_mc=opts.num_mc) + np.log(pRdt)
+
+            y = plot_norm*np.exp(np.logaddexp(yNoise, ySignal))
+
+            ax.plot(x, y, alpha=plot_alpha, color='k')
 
         figname = "%s/visualize_data+model%s.png"%(opts.output_dir, opts.tag)
         if opts.verbose:
@@ -141,5 +165,4 @@ need to implement
   * basic statistics
     * mean, median, mode
     * stdv, variance
-    * quantiles, confidence intervals
-"""
+    * quantiles, confidence intervals"""
