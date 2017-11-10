@@ -33,10 +33,12 @@ In particular, we are interested to see the relative performance of our approach
 # Implementation To-Do
 
   * set up regression schemes
-    * likelihoods (for each method)
-    * priors on parameters
+    * do not define functions for likelihoods (for each method) and priors on the fly. For multithreading, they must be pickle-able
+    * debug likelihoods
+        * likelihood returns infty and nan at times...
+        * calls to scipy.stats.ncx2.logpdf return large positive numbers, causing overflows in marginalization with signalData_ln*df()
+    * ensure we are sampling from the distribution we think we are (KS test?)
   * set up samplers 
-    * emcee
     * pymultinest
   * set up non-trivial priors on distributions through time 
     * extend regressions.py to compute the evidence of relative models
